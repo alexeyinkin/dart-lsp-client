@@ -1,0 +1,5 @@
+include: package:total_lints/package.yaml
+
+linter:
+  rules:
+    use_late_for_private_fields_and_variables: false

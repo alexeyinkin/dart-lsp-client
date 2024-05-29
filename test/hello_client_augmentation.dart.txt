@@ -1,0 +1,7 @@
+augment library 'package:lsp_client_example/hello_client.dart';
+
+import 'dart:core' as prefix0;
+
+augment class User {
+void hello() {prefix0.print('Hello! I am User. I have age, name, username.');}
+}

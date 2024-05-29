@@ -1,0 +1,12 @@
+name: lsp_client_example
+publish_to: none
+
+environment:
+  sdk: ^3.5.0-152
+
+dependencies:
+  lsp_client: { path: .. }
+  macros: ^0.1.0-main.5
+
+dev_dependencies:
+  total_lints: ^3.4.0
