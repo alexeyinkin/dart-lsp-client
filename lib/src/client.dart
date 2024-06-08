@@ -10,10 +10,14 @@ import 'raw_client.dart';
 class LspClient extends LspMapListener {
   // ignore: public_member_api_docs
   LspClient({
+    this.debug = false,
     LspRawClient? rawClient,
-  }) : _mapClient = LspMapClient(rawClient: rawClient) {
+  }) : _mapClient = LspMapClient(debug: debug, rawClient: rawClient) {
     _mapClient.addListener(this);
   }
+
+  /// Produces debug output.
+  final bool debug;
 
   final _listeners = <LspListener>[];
   final LspMapClient _mapClient;
@@ -59,6 +63,7 @@ class LspClient extends LspMapListener {
 
   @override
   void onNotification(String method, Map<String, dynamic> map) {
+    if (debug) print('NOTIFICATION $method $map'); // ignore: avoid_print
     final params = map['params'];
 
     for (final listener in _listeners) {
@@ -73,7 +78,9 @@ class LspClient extends LspMapListener {
   }
 
   void _onAnalyzerStatus(AnalyzerStatusParams params) {
+    if (debug) print('_onAnalyzerStatus'); // ignore: avoid_print
     if (!params.isAnalyzing) {
+      if (debug) print('COMPLETING'); // ignore: avoid_print
       _awaitAnalyzedCompleter.complete();
       _awaitAnalyzedCompleter = Completer();
     }
@@ -98,4 +105,17 @@ class LspListener {
   ///
   /// [map] is the full response map including [method].
   void onMapNotification(String method, Map<String, dynamic> map) {}
+}
+
+/// A [LspListener] that stores all notifications it receives.
+///
+/// Use for debugging.
+class AccumulatingLspListener extends LspListener {
+  /// The 'map' parameters of all received notifications, with method names.
+  final notifications = <Map<String, dynamic>>[];
+
+  @override
+  void onMapNotification(String method, Map<String, dynamic> map) {
+    notifications.add(map);
+  }
 }

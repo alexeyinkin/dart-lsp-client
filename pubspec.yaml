@@ -1,7 +1,7 @@
 name: lsp_client
 description: A client with a small subset of Language Server Protocol to work with a local Dart LSP server
 repository: https://github.com/alexeyinkin/dart-lsp-client.git
-version: 0.1.0
+version: 0.1.1
 
 environment:
   sdk: ^3.4.0

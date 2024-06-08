@@ -9,6 +9,9 @@ final _contentLengthRe = RegExp(r'^Content-Length: (\d+)$');
 /// Medium-level client for LSP.
 /// Sends and receives maps, awaits responses, notifies on notifications.
 class LspMapClient extends LspRawListener {
+  /// Produces debug output.
+  final bool debug;
+
   final _listeners = <LspMapListener>[];
   final LspRawClient _rawClient;
   final _completers = <int, Completer<Map<String, dynamic>?>>{};
@@ -19,6 +22,7 @@ class LspMapClient extends LspRawListener {
 
   // ignore: public_member_api_docs
   LspMapClient({
+    this.debug = false,
     LspRawClient? rawClient,
   }) : _rawClient = rawClient ?? LspRawClient() {
     _rawClient.addListener(this);
@@ -58,30 +62,26 @@ class LspMapClient extends LspRawListener {
   void onData(List<int> data) {
     final str = String.fromCharCodes(data);
     _unparsed += str;
-    _tryParse();
+
+    while (_tryParse());
   }
 
-  void _tryParse() {
+  /// Returns whether any useful parsing was done so there may be more to parse.
+  bool _tryParse() {
     switch (_state) {
       case _State.headers:
-        _tryParseHeaders();
+        if (debug) print('TRYPARSE, IN HEADERS'); // ignore: avoid_print
+        return _tryParseHeader();
       case _State.content:
-        _tryParseContent();
-    }
-  }
-
-  void _tryParseHeaders() {
-    while (_tryParseHeader()) {
-      if (_state == _State.content) {
-        _tryParseContent();
-        break;
-      }
+        if (debug) print('TRYPARSE, IN CONTENT'); // ignore: avoid_print
+        return _tryParseContent();
     }
   }
 
   bool _tryParseHeader() {
     final n = _unparsed.indexOf(_lineSeparator);
     if (n == -1) {
+      if (debug) print('NO LINE SEPARATOR IN UNPARSED'); // ignore: avoid_print
       return false;
     }
 
@@ -92,24 +92,45 @@ class LspMapClient extends LspRawListener {
   }
 
   void _parseHeader(String header) {
+    if (debug) print('HEADER: "$header"'); // ignore: avoid_print
+
     if (header == '') {
+      if (debug) {
+        // ignore: avoid_print
+        print('EMPTY LINE AFTER HEADERS, SWITCHING TO CONTENT');
+      }
       _state = _State.content;
     }
 
     final contentLengthMatch = _contentLengthRe.matchAsPrefix(header);
     if (contentLengthMatch != null) {
       _contentLength = int.parse(contentLengthMatch.group(1)!);
+
+      // ignore: avoid_print
+      if (debug) print('PARSED CONTENT-LENGTH: $_contentLength');
       return;
     }
   }
 
-  void _tryParseContent() {
+  bool _tryParseContent() {
+    if (debug) {
+      // ignore: avoid_print
+      print(
+        'UNPARSED LENGTH: ${_unparsed.length}, '
+        'CONTENT-LENGTH: ${_contentLength}',
+      );
+    }
+
     if (_unparsed.length >= _contentLength!) {
       _parseContent();
+      return true;
     }
+
+    return false;
   }
 
   void _parseContent() {
+    if (debug) print('PARSING CONTENT'); // ignore: avoid_print
     final content = _unparsed.substring(0, _contentLength);
     _unparsed = _unparsed.substring(_contentLength!);
     _contentLength = null;
@@ -148,6 +169,7 @@ class LspMapClient extends LspRawListener {
   }
 
   void _onResponse(int id, Map<String, dynamic> map) {
+    if (debug) print('RECEIVED RESPONSE $id'); // ignore: avoid_print
     final completer = _completers[id];
 
     if (completer == null) {
@@ -160,6 +182,7 @@ class LspMapClient extends LspRawListener {
   }
 
   void _onNotification(String method, Map<String, dynamic> map) {
+    if (debug) print('RECEIVED NOTIFICATION $method'); // ignore: avoid_print
     for (final listener in _listeners) {
       listener.onNotification(method, map);
     }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:lsp_client/lsp_client.dart';
@@ -13,6 +14,7 @@ void main() {
     rawClient.addListener(LspRawPrintListener());
 
     final client = LspClient(
+      debug: true,
       rawClient: rawClient,
     );
     await client.start();
@@ -33,6 +35,12 @@ void main() {
     final initializedFuture = client.initialized();
     final analyzedFuture = client.awaitAnalyzed();
 
+    // ignore: unawaited_futures
+    initializedFuture.then((_){print('INITIALIZED completed');});
+
+    // ignore: unawaited_futures
+    analyzedFuture.then((_){print('AWAITANALYZED completed');});
+
     await (initializedFuture, analyzedFuture).wait;
 
     final contentResult = await client.dartTextDocumentContent(
@@ -48,9 +56,12 @@ void main() {
   });
 
   test('Merges, splits, and denormalizes messages correctly', () async {
+    final listener = AccumulatingLspListener();
+
     final client = LspClient(
       rawClient: LspRawClientMock(),
     );
+    client.addListener(listener);
 
     await client.start();
 
@@ -63,6 +74,11 @@ void main() {
     expect(initializeResult, isA<InitializeResult>());
 
     await client.initialized();
+
+    expect(
+      jsonEncode(listener.notifications),
+      '[{"jsonrpc":"2.0","method":"someMethod","params":{"a":"b"}}]',
+    );
   });
 }
 
@@ -77,7 +93,11 @@ class LspRawClientMock extends LspRawClient {
   static const initializedResponse = 'Content-Length: 38\r\n'
       'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n'
       '\r\n'
-      '{"id":2,"jsonrpc":"2.0","result":null}';
+      '{"id":2,"jsonrpc":"2.0","result":null}'
+      'Content-Length: 58\r\n'
+      'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n'
+      '\r\n'
+      '{"jsonrpc":"2.0","method":"someMethod","params":{"a":"b"}}';
 
   @override
   Future<void> start() async {}
